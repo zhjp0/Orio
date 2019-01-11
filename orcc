@@ -11,7 +11,7 @@ cur_dir = os.path.dirname(abs_path)
 dirs=[]
 if os.path.basename(cur_dir) == 'bin':
     # installed location
-    base_dir = os.path.join(os.path.dirname(cur_dir),'lib','python' + distutils.sysconfig.get_python_version(),'site-packages')
+    base_dir = os.path.join(os.path.dirname(cur_dir),'lib','python2.7' + distutils.sysconfig.get_python_version(),'site-packages')
     dirs = [base_dir, os.path.join(base_dir,'orio')]
 else:
     # source tree (development) location
