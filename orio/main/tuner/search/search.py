@@ -78,6 +78,8 @@ class Search:
         self.verbose = Globals().verbose
         self.perf_cost_records = {}
         self.transform_time={}
+
+
     #----------------------------------------------------------
 
     def searchBestCoord(self):
@@ -195,7 +197,7 @@ class Search:
         # initialize the performance costs mapping
         perf_costs = {}
         
-
+        skip = False
         # filter out all invalid coordinates and previously evaluated coordinates
         uneval_coords = []
         for coord in coords:
@@ -214,7 +216,8 @@ class Search:
             # if the given coordinate has been computed before
             if coord_key in self.perf_cost_records:
                 perf_costs[coord_key] = self.perf_cost_records[coord_key]
-                continue
+                skip = True
+                # continue
 
             # get the performance parameters
             perf_params = self.coordToPerfParams(coord)
@@ -238,73 +241,80 @@ class Search:
         if len(uneval_coords) == 0:
             return perf_costs
 
-        #debug('search perf_params=' + str(perf_params))
-        # execute the original code and obtain results for validation
-        if Globals().validationMode and not Globals().executedOriginal:
-            validation_map = {}
-            transformed_code_seq = self.odriver.optimizeCodeFrags(self.cfrags, perf_params)
-            transformed_code, _, externals = transformed_code_seq[0]
-            validation_map['original'] = (transformed_code, externals)
-            instrumented_code = self.ptcodegen.generate(validation_map)
-            _ = self.ptdriver.run(instrumented_code)
-            Globals().executedOriginal = True
-        
-        # get the transformed code for each corresponding coordinate for non-command-line parameters
-        code_map = {}
-        transformed_code_seq = []
-        for coord in uneval_coords:
-            coord_key = str(coord)
-            
-            perf_params = self.coordToPerfParams(coord)
-            
-            if self.modelBased():
-                self.transform_time[coord_key] = 0.0
-                perf_costs[coord_key] = self.getModelPerfCost(perf_params, coord)
-                # Do the code gen for later (static) analysis
-                #self.odriver.optimizeCodeFrags(self.cfrags, perf_params)
-                continue
-            else: # Legacy, pure empirical
-                start = time.time()
-                #info('1. transformation time = %e'%time.time())
-                try:
-                    transformed_code_seq = self.odriver.optimizeCodeFrags(self.cfrags, perf_params)
-                    elapsed = (time.time() - start)
-                    #info('2. transformation time = %e'%time.time())
-                    self.transform_time[coord_key]=elapsed
-                except Exception:
-                    err('[search] failed evaluation of coordinate: %s=%s.\tException: %s' %\
-                        (str(coord), str(perf_params), str(sys.exc_info()[0])))
-                    # Do not stop if a single test fails, continue with other transformations
-                    #err('failed during evaluation of coordinate: %s=%s\n%s\nError:%s' \
-                    #% (str(coord), str(perf_params), str(e.__class__), e.message), 
-                    #code=0, doexit=False)
-                    perf_costs[coord_key] = ([self.MAXFLOAT],[self.MAXFLOAT])
-                    
-                    elapsed = (time.time() - start)
-                    #info('2. transformation time = %e'%time.time())
-                    self.transform_time[coord_key]=elapsed
-                    continue
-            
-            #info('transformation time = %e' % self.transform_time)
-            if transformed_code_seq:
-                if len(transformed_code_seq) != 1:
-                    err('internal error: the optimized annotation code cannot contain multiple versions', doexit=True)
-    
+        if skip == False:
+
+            #debug('search perf_params=' + str(perf_params))
+            # execute the original code and obtain results for validation
+            if Globals().validationMode and not Globals().executedOriginal:
+                validation_map = {}
+                transformed_code_seq = self.odriver.optimizeCodeFrags(self.cfrags, perf_params)
                 transformed_code, _, externals = transformed_code_seq[0]
-                code_map[coord_key] = (transformed_code, externals)
-        if code_map == {}: # nothing to test
-            return perf_costs
-        #debug("search.py: about to test the following code segments (code_map):\n%s" % code_map, level=1)
+                validation_map['original'] = (transformed_code, externals)
+                instrumented_code = self.ptcodegen.generate(validation_map)
+                _ = self.ptdriver.run(instrumented_code)
+                Globals().executedOriginal = True
+            
+            # get the transformed code for each corresponding coordinate for non-command-line parameters
+            code_map = {}
+            transformed_code_seq = []
+            for coord in uneval_coords:
+                coord_key = str(coord)
+                
+                perf_params = self.coordToPerfParams(coord)
+                
+                if self.modelBased():
+                    self.transform_time[coord_key] = 0.0
+                    perf_costs[coord_key] = self.getModelPerfCost(perf_params, coord)
+                    # Do the code gen for later (static) analysis
+                    #self.odriver.optimizeCodeFrags(self.cfrags, perf_params)
+                    continue
+                else: # Legacy, pure empirical
+                    start = time.time()
+                    #info('1. transformation time = %e'%time.time())
+                    try:
+                        transformed_code_seq = self.odriver.optimizeCodeFrags(self.cfrags, perf_params)
+                        elapsed = (time.time() - start)
+                        #info('2. transformation time = %e'%time.time())
+                        self.transform_time[coord_key]=elapsed
+                    except Exception:
+                        err('[search] failed evaluation of coordinate: %s=%s.\tException: %s' %\
+                            (str(coord), str(perf_params), str(sys.exc_info()[0])))
+                        # Do not stop if a single test fails, continue with other transformations
+                        #err('failed during evaluation of coordinate: %s=%s\n%s\nError:%s' \
+                        #% (str(coord), str(perf_params), str(e.__class__), e.message), 
+                        #code=0, doexit=False)
+                        perf_costs[coord_key] = ([self.MAXFLOAT],[self.MAXFLOAT])
+                        
+                        elapsed = (time.time() - start)
+                        #info('2. transformation time = %e'%time.time())
+                        self.transform_time[coord_key]=elapsed
+                        continue
+                
+                #info('transformation time = %e' % self.transform_time)
+                if transformed_code_seq:
+                    if len(transformed_code_seq) != 1:
+                        err('internal error: the optimized annotation code cannot contain multiple versions', doexit=True)
         
+                    transformed_code, _, externals = transformed_code_seq[0]
+                    code_map[coord_key] = (transformed_code, externals)
+            if code_map == {}: # nothing to test
+                return perf_costs
+            #debug("search.py: about to test the following code segments (code_map):\n%s" % code_map, level=1)
+            
         
         # Evaluate the performance costs for all coordinates
         new_perf_costs = None
         if self.modelBased():
             new_perf_costs = self.getModelPerfCosts(perf_params=perf_params,coord=coord_key)
         if not new_perf_costs:
-            test_code = self.ptcodegen.generate(code_map)
-            perf_params = self.coordToPerfParams(uneval_coords[0])
-            new_perf_costs = self.ptdriver.run(test_code, perf_params=perf_params,coord=coord_key)
+            if skip == False:
+                test_code = self.ptcodegen.generate(code_map)
+                perf_params = self.coordToPerfParams(uneval_coords[0])
+                new_perf_costs = self.ptdriver.run(test_code, perf_params=perf_params,coord=coord_key)
+            else:
+                perf_params = self.coordToPerfParams(uneval_coords[0])
+                new_perf_costs = self.ptdriver.execute(perf_params)
+
         #new_perf_costs = self.getPerfCostConfig(coord_key,perf_params)
         # remember the performance cost of previously evaluated coordinate
         self.perf_cost_records.update(new_perf_costs.items())

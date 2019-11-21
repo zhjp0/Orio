@@ -329,22 +329,22 @@ class PerfTestDriver:
                 output = f.read()
                 f.close()
                 # TODO: very bad assumption that the last number out is the batch job name
-                jobid = output.strip().split('\n')[-1]
-                status_cmd = '%s %s | grep %s | wc -l' % (self.tinfo.status_cmd, jobid, jobid)
-                status = '1'
-                while status == '1': 
-                    time.sleep(3)
-                    f = os.popen(status_cmd)
-                    status = f.read().strip()
-                    f.close()
-                # TODO: generate an output file, instead of reading the batch-generated file
-                outfile = '%s.output' % jobid
-                while not os.path.exists(outfile):
-                    time.sleep(3)
-                f = open(outfile)
-                output = f.read()
-                f.close()
-                if output: perf_costs = eval(output)
+                # jobid = output.strip().split('\n')[-1]
+                # status_cmd = '%s %s | grep %s | wc -l' % (self.tinfo.status_cmd, jobid, jobid)
+                # status = '1'
+                # while status == '1': 
+                #     time.sleep(3)
+                #     f = os.popen(status_cmd)
+                #     status = f.read().strip()
+                #     f.close()
+                # # TODO: generate an output file, instead of reading the batch-generated file
+                # outfile = '%s.output' % jobid
+                # while not os.path.exists(outfile):
+                #     time.sleep(3)
+                # f = open(outfile)
+                # output = f.read()
+                # f.close()
+                # if output: perf_costs = eval(output)
             except Exception, e:
                 err('orio.main.tuner.ptest_driver: failed to execute the test code: "%s"\n --> %s: %s' % (cmd,e.__class__.__name__, e))
                 
@@ -484,9 +484,13 @@ class PerfTestDriver:
         perf_costs = self.__execute(perf_params)
 
         # delete all generated and used files
-        self.__cleanup()
+        # self.__cleanup()
 
         # return the performance costs
         return perf_costs
 
+    def execute(self, perf_params):
+        return self.__execute(perf_params)
 
+    def cleanup(self):
+        self.__cleanup()

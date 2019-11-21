@@ -21,7 +21,7 @@ class PerfTestCodeGen(object):
     #-----------------------------------------------------
 
     def __init__(self, input_params, input_decls, decl_file, init_file, skeleton_code_file, language='c',
-                 random_seed=None, use_parallel_search=False, validation_file=''):
+                 random_seed=None, use_parallel_search=True, validation_file=''):
         '''To instantiate the testing code generator'''
         
         self.input_params = input_params
